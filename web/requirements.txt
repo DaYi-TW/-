@@ -1,0 +1,6 @@
+beautifulsoup4
+pandas
+streamlit
+hydralit_components
+streamlit-lottie
+streamlit-autorefresh
