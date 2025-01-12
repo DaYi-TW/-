@@ -17,8 +17,10 @@ from datetime import datetime
 from streamlit_autorefresh import st_autorefresh
 import pytz
 # 檢查時間限制
+
 def check_time(clock_in_type):
-    now = datetime.now()
+    taiwan_tz = pytz.timezone('Asia/Taipei')
+    now = datetime.now(taiwan_tz)
     hour, minute = now.hour, now.minute
 
     if clock_in_type == "上午打卡上班":
@@ -77,9 +79,8 @@ def 上班():
     if token_value:
         N_minutes = 2
         N_seconds = 59
-        local_time = datetime.now()
-        local_tz = pytz.timezone('Asia/Taipei')  # 替換為你的時區，例如 Asia/Taipei
-        current_time = local_tz.localize(local_time)
+        taiwan_tz = pytz.timezone('Asia/Taipei')
+        current_time = datetime.now(taiwan_tz)
         minutes_to_add = random.randint(0, N_minutes)
         seconds_to_add = random.randint(0, N_seconds)
 
@@ -155,9 +156,8 @@ def 下班():
     if token_value:
         N_minutes = 5
         N_seconds = 59
-        local_time = datetime.now()
-        local_tz = pytz.timezone('Asia/Taipei')  # 替換為你的時區，例如 Asia/Taipei
-        current_time = local_tz.localize(local_time)
+        taiwan_tz = pytz.timezone('Asia/Taipei')
+        current_time = datetime.now(taiwan_tz)
         # 查現在時區
 
         minutes_to_add = random.randint(0, N_minutes)
@@ -273,7 +273,8 @@ def is_admin(username, password):
 def add_record(username, clock_in_type):
     conn = sqlite3.connect("attendance.db")
     c = conn.cursor()
-    clock_in_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    taiwan_tz = pytz.timezone('Asia/Taipei')
+    clock_in_time = datetime.now(taiwan_tz).strftime("%Y-%m-%d %H:%M:%S")
     c.execute("""
         INSERT INTO attendance (username, clock_in_type, clock_in_time)
         VALUES (?, ?, ?)
@@ -425,9 +426,10 @@ def main():
                 st.markdown(button_style, unsafe_allow_html=True)
 
                 count = st_autorefresh(interval=1000, limit=None, key="autorefresh")
-                local_time = datetime.now()
-                local_tz = pytz.timezone('Asia/Taipei')  # 替換為你的時區，例如 Asia/Taipei
-                current_time = local_tz.localize(local_time).strftime("%H:%M:%S")
+                taiwan_tz = pytz.timezone('Asia/Taipei')
+                # add +8 to get Taiwan time
+                current_time = datetime.now(taiwan_tz).strftime("%H:%M:%S")
+
                 st.markdown(f"#### ⏰ 現在時間：{current_time}")
 
                 with col1:
