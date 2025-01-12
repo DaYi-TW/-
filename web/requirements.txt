@@ -1,7 +1,7 @@
 beautifulsoup4
 pandas
+numpy
 streamlit
 hydralit_components
 streamlit-lottie
 streamlit-autorefresh
-numpy
