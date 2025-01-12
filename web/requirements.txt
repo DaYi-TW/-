@@ -4,3 +4,4 @@ streamlit
 hydralit_components
 streamlit-lottie
 streamlit-autorefresh
+numpy

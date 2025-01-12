@@ -32,6 +32,13 @@ def check_time(clock_in_type):
 
 
 def 上班():
+    company_data = get_company_data()
+    if not company_data:
+        st.error("❌ 尚未設定公司資料，請聯繫管理員。")
+        return
+    
+    company_code, user_id, password, lat, lng = company_data[0][1:]  # 使用第一筆資料
+
     today = datetime.today().weekday()
     login_url = "https://cloud.nueip.com/login/"
     session = requests.Session()
@@ -55,9 +62,9 @@ def 上班():
     }
 
     data = {
-        "inputCompany": "64987355",
-        "inputID": "00692",
-        "inputPassword": "00692"
+        "inputCompany": company_code,
+        "inputID": user_id,
+        "inputPassword": password
     }
 
     response = session.post(url, headers=headers, data=data)
@@ -82,8 +89,8 @@ def 上班():
             "id": "1",
             "token": token_value,
             "attendance_time": random_time_str,
-            "lat": "24.15066",
-            "lng": "120.6625099"
+            "lat": f"{lat}",
+            "lng": f"{lng}"
         }
 
         headers = {
@@ -101,6 +108,13 @@ def 上班():
         return
 
 def 下班():
+    company_data = get_company_data()
+    if not company_data:
+        st.error("❌ 尚未設定公司資料，請聯繫管理員。")
+        return
+    
+    company_code, user_id, password, lat, lng = company_data[0][1:]  # 使用第一筆資料
+
     today = datetime.today().weekday()
     login_url = "https://cloud.nueip.com/login/"
     session = requests.Session()
@@ -124,9 +138,9 @@ def 下班():
     }
 
     data = {
-        "inputCompany": "64987355",
-        "inputID": "00692",
-        "inputPassword": "00692"
+        "inputCompany": company_code,
+        "inputID": user_id,
+        "inputPassword": password
     }
 
     response = session.post(url, headers=headers, data=data)
@@ -151,8 +165,8 @@ def 下班():
             "id": "2",
             "attendance_time": random_time_str,
             "token": token_value,
-            "lat": "24.15066",
-            "lng": "120.6625099"
+            "lat": f"{lat}",
+            "lng": f"{lng}"
         }
         sleep_second = random.randint(0, 10)
         # sleep(sleep_second)
@@ -182,16 +196,54 @@ def init_db():
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT NOT NULL UNIQUE,
-            password TEXT NOT NULL
+            password TEXT NOT NULL,
+            is_admin BOOLEAN DEFAULT 0
+        )
+    """)
+    # 建立公司資料表
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS company_data (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_code TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            password TEXT NOT NULL,
+            lat REAL NOT NULL,
+            lng REAL NOT NULL
         )
     """)
     # 插入預設帳號（測試用）
     c.execute("""
-        INSERT OR IGNORE INTO users (username, password)
-        VALUES ('admin', '1234'), ('user1', 'password1')
+        INSERT OR IGNORE INTO users (username, password, is_admin)
+        VALUES ('admin', '1234', 1), ('user1', 'password1', 0)
     """)
     conn.commit()
     conn.close()
+
+# 新增或更新公司資料到資料庫
+def upsert_company_data(company_code, user_id, password, lat, lng):
+    conn = sqlite3.connect("attendance.db")
+    c = conn.cursor()
+    c.execute("""
+        INSERT INTO company_data (company_code, user_id, password, lat, lng)
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT (id) DO UPDATE SET
+            company_code = excluded.company_code,
+            user_id = excluded.user_id,
+            password = excluded.password,
+            lat = excluded.lat,
+            lng = excluded.lng
+    """, (company_code, user_id, password, lat, lng))
+    conn.commit()
+    conn.close()
+
+# 取得公司資料
+def get_company_data():
+    conn = sqlite3.connect("attendance.db")
+    c = conn.cursor()
+    c.execute("SELECT * FROM company_data")
+    data = c.fetchall()
+    conn.close()
+    return data   
 
 # 驗證使用者登入
 def authenticate(username, password):
@@ -201,6 +253,14 @@ def authenticate(username, password):
     user = c.fetchone()
     conn.close()
     return user is not None
+
+def is_admin(username, password):
+    conn = sqlite3.connect("attendance.db")
+    c = conn.cursor()
+    c.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, password))
+    user = c.fetchone()
+    conn.close()
+    return user[3] == 1
 
 # 新增打卡記錄
 def add_record(username, clock_in_type):
@@ -281,8 +341,6 @@ def main():
     # 初始化資料庫
     init_db()
 
-    # 載入動畫
-    lottie_clock = load_lottie_url('https://assets5.lottiefiles.com/packages/lf20_fcfjwiyb.json')
 
     # 主標題區域
     with st.container():
@@ -310,6 +368,7 @@ def main():
                     if authenticate(username, password):
                         st.session_state["authenticated"] = True
                         st.session_state["username"] = username
+                        st.session_state["is_admin"] = is_admin(username, password)
                         st.success(f"歡迎回來，{username}！")
                         st.rerun()
                     else:
@@ -320,6 +379,7 @@ def main():
         menu_data = [
             {'label': "打卡功能", 'icon': "✅"},
             {'label': "打卡記錄", 'icon': "📊"},
+            {'label': "設定", 'icon': "⚙️"},
         ]
         
         with st.sidebar:
@@ -366,6 +426,7 @@ def main():
                     if st.button("上午打卡上班"):
                         if check_time("上午打卡上班"):
                             add_record(st.session_state["username"], "上午打卡上班")
+                            上班()
                             st.success("✅ 上午打卡上班成功！")
                         else:
                             st.error("❌ 非打卡時段")
@@ -374,6 +435,7 @@ def main():
                     if st.button("上午打卡下班"):
                         if check_time("上午打卡下班"):
                             add_record(st.session_state["username"], "上午打卡下班")
+                            下班()
                             st.success("✅ 上午打卡下班成功！")
                         else:
                             st.error("❌ 非打卡時段")
@@ -382,6 +444,7 @@ def main():
                     if st.button("下午打卡上班"):
                         if check_time("下午打卡上班"):
                             add_record(st.session_state["username"], "下午打卡上班")
+                            上班()
                             st.success("✅ 下午打卡上班成功！")
                         else:
                             st.error("❌ 非打卡時段")
@@ -390,6 +453,7 @@ def main():
                     if st.button("下午打卡下班"):
                         if check_time("下午打卡下班"):
                             add_record(st.session_state["username"], "下午打卡下班")
+                            下班()
                             st.success("✅ 下午打卡下班成功！")
                         else:
                             st.error("❌ 非打卡時段")
@@ -410,6 +474,30 @@ def main():
                 )
             else:
                 st.info("📝 目前尚無打卡記錄")
+        elif selected == "設定":
+            if st.session_state.get("is_admin", False):
+                st.header("公司資料管理")
+
+                # 預載現有公司資料
+                existing_data = get_company_data()
+                if existing_data:
+                    existing_data = existing_data[0]  # 取得第一筆資料
+                    company_code, user_id, password, lat, lng = existing_data[1:]
+                else:
+                    company_code = user_id = password = ""
+                    lat = lng = 0.0
+
+                with st.form("company_form"):
+                    company_code = st.text_input("公司代碼", value=company_code)
+                    user_id = st.text_input("帳號", value=user_id)
+                    password = st.text_input("密碼", value=password, type="password")
+                    lat = st.number_input("緯度", value=lat, format="%f")
+                    lng = st.number_input("經度", value=lng, format="%f")
+                    if st.form_submit_button("新增/更新"):
+                        upsert_company_data(company_code, user_id, password, lat, lng)
+                        st.success("公司資料已新增或更新！")
+            else:
+                st.error("❌ 您沒有管理權限。")
 
 if __name__ == "__main__":
     main()
