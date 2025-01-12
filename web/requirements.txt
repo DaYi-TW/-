@@ -1,7 +1,7 @@
-numpy
 beautifulsoup4
 pandas
 streamlit
 hydralit_components
 streamlit-lottie
 streamlit-autorefresh
+numpy==1.26
