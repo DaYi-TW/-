@@ -15,6 +15,7 @@ import requests
 import json
 from datetime import datetime
 from streamlit_autorefresh import st_autorefresh
+import pytz
 # 檢查時間限制
 def check_time(clock_in_type):
     now = datetime.now()
@@ -76,7 +77,9 @@ def 上班():
     if token_value:
         N_minutes = 2
         N_seconds = 59
-        current_time = datetime.now()
+        local_time = datetime.now()
+        local_tz = pytz.timezone('Asia/Taipei')  # 替換為你的時區，例如 Asia/Taipei
+        current_time = local_tz.localize(local_time)
         minutes_to_add = random.randint(0, N_minutes)
         seconds_to_add = random.randint(0, N_seconds)
 
@@ -152,7 +155,11 @@ def 下班():
     if token_value:
         N_minutes = 5
         N_seconds = 59
-        current_time = datetime.now()
+        local_time = datetime.now()
+        local_tz = pytz.timezone('Asia/Taipei')  # 替換為你的時區，例如 Asia/Taipei
+        current_time = local_tz.localize(local_time)
+        # 查現在時區
+
         minutes_to_add = random.randint(0, N_minutes)
         seconds_to_add = random.randint(0, N_seconds)
 
@@ -392,7 +399,6 @@ def main():
         selected = hc.nav_bar(
             menu_definition=menu_data,
             override_theme={'txc_inactive': '#FFFFFF'},
-            home_name='首頁',
             first_select=0
         )
 
@@ -419,7 +425,9 @@ def main():
                 st.markdown(button_style, unsafe_allow_html=True)
 
                 count = st_autorefresh(interval=1000, limit=None, key="autorefresh")
-                current_time = datetime.now().strftime("%H:%M:%S")
+                local_time = datetime.now()
+                local_tz = pytz.timezone('Asia/Taipei')  # 替換為你的時區，例如 Asia/Taipei
+                current_time = local_tz.localize(local_time).strftime("%H:%M:%S")
                 st.markdown(f"#### ⏰ 現在時間：{current_time}")
 
                 with col1:
