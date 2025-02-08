@@ -24,7 +24,7 @@ def check_time(clock_in_type):
     hour, minute = now.hour, now.minute
 
     if clock_in_type == "上午打卡上班":
-        return 7 <= hour < 8
+        return 7 <= hour < 9
     elif clock_in_type == "上午打卡下班":
         return 12 <= hour < 13
     elif clock_in_type == "下午打卡上班":
